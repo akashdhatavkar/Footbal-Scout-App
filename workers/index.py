@@ -7,18 +7,65 @@ import unicodedata
 from urllib.parse import parse_qs, urlparse
 
 try:
-    from workers import Response, WorkerEntrypoint
+    from js import Response
 except ImportError:
-    class WorkerEntrypoint:
-        pass
-
     class Response:
         def __init__(self, body="", status=200, headers=None):
             self.body = body
             self.status = status
             self.headers = headers or {}
 
-from data import CORPUS
+# Embedded seed corpus directly inside index.py to avoid cross-module import failures
+CORPUS = [
+    {
+        "player_id": "p1",
+        "first_name": "Martin",
+        "last_name": "Ødegaard",
+        "league_tier": "top5",
+        "experience_years": 7,
+        "features": {
+            "goals_p90": 0.28, "assists_p90": 0.25, "shots_p90": 2.30,
+            "shots_on_target_p90": 0.85, "npxg_p90": 0.26, "xa_p90": 0.28,
+            "key_passes_p90": 2.50, "pass_completion_pct": 84.5,
+            "progressive_passes_p90": 8.10, "progressive_carries_p90": 3.20,
+            "successful_take_ons_p90": 1.10, "tackles_p90": 1.10,
+            "interceptions_p90": 0.40, "blocks_p90": 0.60,
+            "aerial_duels_won_p90": 0.50, "touches_p90": 68.0,
+        },
+    },
+    {
+        "player_id": "p2",
+        "first_name": "Bruno",
+        "last_name": "Fernandes",
+        "league_tier": "top5",
+        "experience_years": 8,
+        "features": {
+            "goals_p90": 0.25, "assists_p90": 0.22, "shots_p90": 2.60,
+            "shots_on_target_p90": 0.90, "npxg_p90": 0.24, "xa_p90": 0.32,
+            "key_passes_p90": 3.10, "pass_completion_pct": 78.0,
+            "progressive_passes_p90": 7.80, "progressive_carries_p90": 2.50,
+            "successful_take_ons_p90": 0.80, "tackles_p90": 1.80,
+            "interceptions_p90": 0.70, "blocks_p90": 0.80,
+            "aerial_duels_won_p90": 0.60, "touches_p90": 72.0,
+        },
+    },
+    {
+        "player_id": "p3",
+        "first_name": "James",
+        "last_name": "Maddison",
+        "league_tier": "top5",
+        "experience_years": 6,
+        "features": {
+            "goals_p90": 0.22, "assists_p90": 0.28, "shots_p90": 2.40,
+            "shots_on_target_p90": 0.95, "npxg_p90": 0.20, "xa_p90": 0.30,
+            "key_passes_p90": 2.80, "pass_completion_pct": 80.2,
+            "progressive_passes_p90": 6.90, "progressive_carries_p90": 3.10,
+            "successful_take_ons_p90": 1.40, "tackles_p90": 1.20,
+            "interceptions_p90": 0.50, "blocks_p90": 0.40,
+            "aerial_duels_won_p90": 0.30, "touches_p90": 62.0,
+        },
+    },
+]
 
 FEATURES = [
     "goals_p90", "assists_p90", "shots_p90", "shots_on_target_p90",
@@ -147,42 +194,41 @@ def similar(query: str, k: int = 5) -> dict:
     }
 
 
-class Default(WorkerEntrypoint):
-    async def fetch(self, request):
+async def on_fetch(request, env=None, ctx=None):
+    try:
+        url_str = str(getattr(request, "url", ""))
+        qs = parse_qs(urlparse(url_str).query)
+        query = (qs.get("query") or [""])[0]
+
         try:
-            url_str = str(getattr(request, "url", ""))
-            qs = parse_qs(urlparse(url_str).query)
-            query = (qs.get("query") or [""])[0]
+            k = int((qs.get("k") or ["5"])[0])
+        except ValueError:
+            k = 5
 
-            try:
-                k = int((qs.get("k") or ["5"])[0])
-            except ValueError:
-                k = 5
+        headers = {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        }
 
-            headers = {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*"
-            }
+        if not query:
+            body = json.dumps({
+                "status": "ok",
+                "message": "Football Stats Worker API online. Pass ?query=PlayerName to search."
+            })
+            return Response.new(body, status=200, headers=headers)
 
-            if not query:
-                body = json.dumps({
-                    "status": "ok",
-                    "message": "Football Stats Worker API online. Pass ?query=PlayerName to search."
-                })
-                return Response(body, status=200, headers=headers)
+        payload = similar(query, k=k)
+        status = 404 if "error" in payload else 200
+        return Response.new(json.dumps(payload, ensure_ascii=False), status=status, headers=headers)
 
-            payload = similar(query, k=k)
-            status = 404 if "error" in payload else 200
-            return Response(json.dumps(payload, ensure_ascii=False), status=status, headers=headers)
-
-        except Exception as e:
-            import traceback
-            err_headers = {
-                "Content-Type": "text/plain",
-                "Access-Control-Allow-Origin": "*"
-            }
-            return Response(
-                f"Worker Runtime Error:\n{traceback.format_exc()}",
-                status=500,
-                headers=err_headers
-            )
+    except Exception as e:
+        import traceback
+        err_headers = {
+            "Content-Type": "text/plain",
+            "Access-Control-Allow-Origin": "*",
+        }
+        return Response.new(
+            f"Worker Error:\n{traceback.format_exc()}",
+            status=500,
+            headers=err_headers,
+        )
