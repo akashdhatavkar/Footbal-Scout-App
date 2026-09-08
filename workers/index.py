@@ -34,7 +34,7 @@ except ImportError:  # pragma: no cover - local testing without the runtime
             self.headers = headers or {}
 
 
-from workers.data import CORPUS  # noqa: E402
+from data import CORPUS   # noqa: E402
 
 FEATURES = [
     "goals_p90",
