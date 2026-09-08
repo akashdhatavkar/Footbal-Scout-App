@@ -7,8 +7,11 @@ import unicodedata
 from urllib.parse import parse_qs, urlparse
 
 try:
-    from js import Response
+    from workers import Response, WorkerEntrypoint
 except ImportError:
+    class WorkerEntrypoint:
+        pass
+
     class Response:
         def __init__(self, body="", status=200, headers=None):
             self.body = body
@@ -36,6 +39,7 @@ FEATURE_WEIGHTS = {
 
 FUZZY_THRESHOLD = 85
 
+
 def normalize(text: str) -> str:
     if not text:
         return ""
@@ -43,24 +47,30 @@ def normalize(text: str) -> str:
     text = "".join(c for c in text if not unicodedata.combining(c))
     return " ".join(text.lower().split())
 
+
 def ratio(a: str, b: str) -> float:
     return difflib.SequenceMatcher(None, normalize(a), normalize(b)).ratio() * 100.0
+
 
 def feature_vector(player: dict) -> list[float]:
     feats = player.get("features", {})
     return [float(feats.get(f, 0.0)) for f in FEATURES]
 
+
 def league_multiplier(player: dict) -> float:
     return 0.60 if player.get("league_tier") == "top5" else 0.40
 
+
 def experience_multiplier(player: dict) -> float:
     return 0.55 if player.get("experience_years", 0) >= 5 else 0.45
+
 
 def weighted_cosine(a: list[float], b: list[float], w: list[float]) -> float:
     num = sum(wi * ai * bi for wi, ai, bi in zip(w, a, b))
     den = math.sqrt(sum(wi * ai * ai for wi, ai in zip(w, a)) *
                     sum(wi * bi * bi for wi, bi in zip(w, b)))
     return num / den if den else 0.0
+
 
 def standardize(rows: list[list[float]]) -> list[list[float]]:
     n = len(rows)
@@ -73,6 +83,7 @@ def standardize(rows: list[list[float]]) -> list[list[float]]:
         var = sum((r[j] - means[j]) ** 2 for r in rows) / n
         stds.append(math.sqrt(var) if var > 0 else 1.0)
     return [[(r[j] - means[j]) / stds[j] for j in range(m)] for r in rows]
+
 
 def resolve(query: str) -> dict | None:
     parts = query.strip().split()
@@ -94,6 +105,7 @@ def resolve(query: str) -> dict | None:
     if best is not None:
         return {"player": best, "match_type": "fuzzy", "confidence": best_score}
     return None
+
 
 def similar(query: str, k: int = 5) -> dict:
     resolved = resolve(query)
@@ -134,25 +146,43 @@ def similar(query: str, k: int = 5) -> dict:
         "similar_players": results[:k],
     }
 
-async def on_fetch(request):
-    try:
-        url_str = str(getattr(request, "url", ""))
-        qs = parse_qs(urlparse(url_str).query)
-        query = (qs.get("query") or [""])[0]
-        
+
+class Default(WorkerEntrypoint):
+    async def fetch(self, request):
         try:
-            k = int((qs.get("k") or ["5"])[0])
-        except ValueError:
-            k = 5
+            url_str = str(getattr(request, "url", ""))
+            qs = parse_qs(urlparse(url_str).query)
+            query = (qs.get("query") or [""])[0]
 
-        if not query:
-            body = json.dumps({"status": "ok", "message": "Football Stats Worker API online. Pass ?query=PlayerName to search."})
-            return Response.new(body, status=200, headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"})
+            try:
+                k = int((qs.get("k") or ["5"])[0])
+            except ValueError:
+                k = 5
 
-        payload = similar(query, k=k)
-        status = 404 if "error" in payload else 200
-        return Response.new(json.dumps(payload, ensure_ascii=False), status=status, headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"})
-    except Exception as e:
-        import traceback
-        err_msg = f"Runtime Error:\n{traceback.format_exc()}"
-        return Response.new(err_msg, status=500, headers={"Content-Type": "text/plain", "Access-Control-Allow-Origin": "*"})
+            headers = {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            }
+
+            if not query:
+                body = json.dumps({
+                    "status": "ok",
+                    "message": "Football Stats Worker API online. Pass ?query=PlayerName to search."
+                })
+                return Response(body, status=200, headers=headers)
+
+            payload = similar(query, k=k)
+            status = 404 if "error" in payload else 200
+            return Response(json.dumps(payload, ensure_ascii=False), status=status, headers=headers)
+
+        except Exception as e:
+            import traceback
+            err_headers = {
+                "Content-Type": "text/plain",
+                "Access-Control-Allow-Origin": "*"
+            }
+            return Response(
+                f"Worker Runtime Error:\n{traceback.format_exc()}",
+                status=500,
+                headers=err_headers
+            )
