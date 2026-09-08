@@ -7,4 +7,13 @@ scripts/export_worker_data.py) when deploying to Workers.
 """
 from __future__ import annotations
 
-from scripts.sample_data import SAMPLE_PLAYERS as CORPUS
+# Inline static seed corpus for Cloudflare Workers edge deployment
+CORPUS = [
+    {
+        "name": "Martin Ødegaard",
+        "position": "MF",
+        "league": "Premier League",
+        "market_value_eur": 110000000,
+        "metrics": {"goals_per90": 0.28, "assists_per90": 0.25}
+    }
+]
