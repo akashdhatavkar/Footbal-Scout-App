@@ -1,19 +1,79 @@
-"""Corpus data for the Cloudflare Workers (edge) deployment.
+"""Sample seed corpus for edge execution."""
 
-Kept as a thin re-export of the single source of truth in scripts/sample_data.py
-so the corpus never drifts between the full Python backend and the edge worker.
-The deployment guide explains how to bundle this module (or inline the data via
-scripts/export_worker_data.py) when deploying to Workers.
-"""
-from __future__ import annotations
-
-# Inline static seed corpus for Cloudflare Workers edge deployment
 CORPUS = [
     {
-        "name": "Martin Ødegaard",
-        "position": "MF",
-        "league": "Premier League",
-        "market_value_eur": 110000000,
-        "metrics": {"goals_per90": 0.28, "assists_per90": 0.25}
-    }
+        "player_id": "p1",
+        "first_name": "Martin",
+        "last_name": "Ødegaard",
+        "league_tier": "top5",
+        "experience_years": 7,
+        "features": {
+            "goals_p90": 0.28,
+            "assists_p90": 0.25,
+            "shots_p90": 2.30,
+            "shots_on_target_p90": 0.85,
+            "npxg_p90": 0.26,
+            "xa_p90": 0.28,
+            "key_passes_p90": 2.50,
+            "pass_completion_pct": 84.5,
+            "progressive_passes_p90": 8.10,
+            "progressive_carries_p90": 3.20,
+            "successful_take_ons_p90": 1.10,
+            "tackles_p90": 1.10,
+            "interceptions_p90": 0.40,
+            "blocks_p90": 0.60,
+            "aerial_duels_won_p90": 0.50,
+            "touches_p90": 68.0,
+        },
+    },
+    {
+        "player_id": "p2",
+        "first_name": "Bruno",
+        "last_name": "Fernandes",
+        "league_tier": "top5",
+        "experience_years": 8,
+        "features": {
+            "goals_p90": 0.25,
+            "assists_p90": 0.22,
+            "shots_p90": 2.60,
+            "shots_on_target_p90": 0.90,
+            "npxg_p90": 0.24,
+            "xa_p90": 0.32,
+            "key_passes_p90": 3.10,
+            "pass_completion_pct": 78.0,
+            "progressive_passes_p90": 7.80,
+            "progressive_carries_p90": 2.50,
+            "successful_take_ons_p90": 0.80,
+            "tackles_p90": 1.80,
+            "interceptions_p90": 0.70,
+            "blocks_p90": 0.80,
+            "aerial_duels_won_p90": 0.60,
+            "touches_p90": 72.0,
+        },
+    },
+    {
+        "player_id": "p3",
+        "first_name": "James",
+        "last_name": "Maddison",
+        "league_tier": "top5",
+        "experience_years": 6,
+        "features": {
+            "goals_p90": 0.22,
+            "assists_p90": 0.28,
+            "shots_p90": 2.40,
+            "shots_on_target_p90": 0.95,
+            "npxg_p90": 0.20,
+            "xa_p90": 0.30,
+            "key_passes_p90": 2.80,
+            "pass_completion_pct": 80.2,
+            "progressive_passes_p90": 6.90,
+            "progressive_carries_p90": 3.10,
+            "successful_take_ons_p90": 1.40,
+            "tackles_p90": 1.20,
+            "interceptions_p90": 0.50,
+            "blocks_p90": 0.40,
+            "aerial_duels_won_p90": 0.30,
+            "touches_p90": 62.0,
+        },
+    },
 ]
