@@ -1,0 +1,16 @@
+# Cloudflare Workers (Python) configuration.
+# Python Workers are in open beta and require the `python_workers` compatibility flag.
+name = "football-stats-api"
+main = "workers/index.py"
+
+compatibility_date = "2025-01-01"
+compatibility_flags = ["python_workers"]
+
+# Include the corpus data module in the bundle (single source of truth).
+[assets]
+directory = "./workers"
+
+[observability]
+enabled = true
+
+# Optional: bind to a custom route / custom domain via the dashboard or CLI.

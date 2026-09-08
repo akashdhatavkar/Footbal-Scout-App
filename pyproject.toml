@@ -1,0 +1,14 @@
+# pywrangler / uv project for the Cloudflare Workers (Python) edge deployment.
+#
+#   uvx --from workers-py pywrangler init   # (one-time project scaffold)
+#   uv run pywrangler dev                   # local dev server
+#   uv run pywrangler deploy                # deploy to Cloudflare
+[project]
+name = "football-stats-workers"
+version = "1.0.0"
+description = "Edge worker for the Football Stats App"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = ["workers-py"]

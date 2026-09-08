@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Football Stats App</title>
+  <!-- Lightweight React (UMD, no build step). Replace with a Vite/Next build for production. -->
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <style>
+    :root { --bg:#0f172a; --panel:#1e293b; --accent:#38bdf8; --text:#e2e8f0; --muted:#94a3b8; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+           background: var(--bg); color: var(--text); }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 2rem 1rem; }
+    h1 { margin: 0 0 .25rem; }
+    .sub { color: var(--muted); margin-bottom: 1.5rem; }
+    .search { display:flex; gap:.5rem; margin-bottom: 1.5rem; }
+    input { flex:1; padding:.7rem .9rem; border-radius:.5rem; border:1px solid #334155;
+            background:var(--panel); color:var(--text); font-size:1rem; }
+    button { padding:.7rem 1.2rem; border-radius:.5rem; border:none; background:var(--accent);
+             color:#0f172a; font-weight:600; cursor:pointer; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem; }
+    .card { background:var(--panel); border-radius:.75rem; padding:1rem; }
+    .card .label { color:var(--muted); font-size:.8rem; text-transform:uppercase; letter-spacing:.03em; }
+    .card .value { font-size:1.3rem; font-weight:700; margin-top:.2rem; }
+    table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:.75rem; overflow:hidden; }
+    th, td { text-align:left; padding:.6rem .8rem; border-bottom:1px solid #334155; font-size:.9rem; }
+    th { color:var(--muted); font-weight:600; }
+    .err { color:#f87171; }
+    .muted { color:var(--muted); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    // Point this at your deployed Cloudflare Worker (or Pages Functions proxy).
+    const API_URL = "https://football-api.YOUR_SUBDOMAIN.workers.dev";
+
+    const fmtValue = (v) => v == null ? "—" : "€" + (v / 1e6).toFixed(1) + "m";
+    const { useState } = React;
+
+    function App() {
+      const [query, setQuery] = useState("");
+      const [result, setResult] = useState(null);
+      const [error, setError] = useState(null);
+      const [loading, setLoading] = useState(false);
+
+      async function search() {
+        if (!query.trim()) return;
+        setLoading(true); setError(null); setResult(null);
+        try {
+          const res = await fetch(`${API_URL}/similar?query=${encodeURIComponent(query)}&k=5`);
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
+          setResult(data);
+        } catch (e) {
+          setError(e.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      const p = result && result.player;
+      return React.createElement("div", { className: "wrap" },
+        React.createElement("h1", null, "⚽ Football Stats App"),
+        React.createElement("div", { className: "sub" },
+          "Search any player for stats, market value and top-5 similar players worldwide."),
+        React.createElement("div", { className: "search" },
+          React.createElement("input", {
+            placeholder: "e.g. Martin Ødegaard",
+            value: query,
+            onChange: (e) => setQuery(e.target.value),
+            onKeyDown: (e) => { if (e.key === "Enter") search(); },
+          }),
+          React.createElement("button", { onClick: search, disabled: loading },
+            loading ? "Loading…" : "Search")),
+        error && React.createElement("div", { className: "err" }, error),
+        p && React.createElement("div", null,
+          React.createElement("div", { className: "grid" },
+            metric("Name", p.name), metric("Club", p.club), metric("League", p.league),
+            metric("Market value", fmtValue(p.market_value_eur))),
+          React.createElement("div", { className: "muted" },
+            `Position: ${p.position} · Age: ${p.age} · Match: ${result.match_type} (${result.confidence.toFixed(0)}%)`),
+          React.createElement("h3", null, "Top similar players (weighted)"),
+          React.createElement("table", null,
+            React.createElement("thead", null,
+              React.createElement("tr", null,
+                th("#"), th("Player"), th("Club"), th("League"), th("Pos"),
+                th("Value"), th("Cosine"), th("Final"))),
+            React.createElement("tbody", null,
+              result.similar_players.map((s) =>
+                React.createElement("tr", { key: s.rank + s.player.player_id },
+                  td(s.rank), td(s.player.name), td(s.player.club), td(s.player.league),
+                  td(s.player.position), td(fmtValue(s.player.market_value_eur)),
+                  td(s.cosine_similarity.toFixed(3)), td(s.final_score.toFixed(4)))))));
+    }
+
+    function metric(label, value) {
+      return React.createElement("div", { className: "card" },
+        React.createElement("div", { className: "label" }, label),
+        React.createElement("div", { className: "value" }, value));
+    }
+    function th(t) { return React.createElement("th", null, t); }
+    function td(t) { return React.createElement("td", null, t); }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(
+      React.createElement(App));
+  </script>
+</body>
+</html>
