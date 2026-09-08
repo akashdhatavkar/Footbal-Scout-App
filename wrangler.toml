@@ -8,7 +8,7 @@ compatibility_flags = ["python_workers"]
 
 # Include the corpus data module in the bundle (single source of truth).
 [assets]
-directory = "./workers"
+directory = "."
 
 [observability]
 enabled = true
