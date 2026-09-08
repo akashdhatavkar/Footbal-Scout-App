@@ -177,18 +177,23 @@ def similar(query: str, k: int = 5) -> dict:
 
 class Default(WorkerEntrypoint):
     async def fetch(self, request):
-        qs = parse_qs(urlparse(str(getattr(request, "url", ""))).query)
-        query = (qs.get("query") or [""])[0]
         try:
-            k = int((qs.get("k") or ["5"])[0])
-        except ValueError:
-            k = 5
+            qs = parse_qs(urlparse(str(getattr(request, "url", ""))).query)
+            query = (qs.get("query") or [""])[0]
+            try:
+                k = int((qs.get("k") or ["5"])[0])
+            except ValueError:
+                k = 5
 
-        if not query:
-            body = json.dumps({"error": "missing 'query' parameter"})
-            return Response(body, status=400, headers={"Content-Type": "application/json"})
+            if not query:
+                body = json.dumps({"error": "missing 'query' parameter"})
+                return Response(body, status=400, headers={"Content-Type": "application/json"})
 
-        payload = similar(query, k=k)
-        headers = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-        status = 404 if "error" in payload else 200
-        return Response(json.dumps(payload, ensure_ascii=False), status=status, headers=headers)
+            payload = similar(query, k=k)
+            headers = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+            status = 404 if "error" in payload else 200
+            return Response(json.dumps(payload, ensure_ascii=False), status=status, headers=headers)
+        except Exception as e:
+            import traceback
+            headers = {"Content-Type": "text/plain", "Access-Control-Allow-Origin": "*"}
+            return Response(f"Worker Error:\n{traceback.format_exc()}", status=500, headers=headers)
