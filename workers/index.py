@@ -6,7 +6,8 @@ import math
 import unicodedata
 from urllib.parse import parse_qs, urlparse
 
-from js import Response, WorkerEntrypoint
+from js import Response
+from cloudflare.workers import WorkerEntrypoint
 
 # Embedded seed corpus directly inside index.py to avoid cross-module import failures
 CORPUS = [
