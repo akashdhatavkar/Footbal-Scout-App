@@ -8,7 +8,6 @@ from urllib.parse import parse_qs, urlparse
 
 from js import Response
 from workers import WorkerEntrypoint
-from cloudflare.workers import WorkerEntrypoint
 
 # Embedded seed corpus directly inside index.py
 CORPUS = [
