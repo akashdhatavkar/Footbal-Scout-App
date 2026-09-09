@@ -6,14 +6,7 @@ import math
 import unicodedata
 from urllib.parse import parse_qs, urlparse
 
-try:
-    from js import Response
-except ImportError:
-    class Response:
-        def __init__(self, body="", status=200, headers=None):
-            self.body = body
-            self.status = status
-            self.headers = headers or {}
+from js import Response, WorkerEntrypoint
 
 # Embedded seed corpus directly inside index.py to avoid cross-module import failures
 CORPUS = [
@@ -194,41 +187,42 @@ def similar(query: str, k: int = 5) -> dict:
     }
 
 
-async def on_fetch(request, env=None, ctx=None):
-    try:
-        url_str = str(getattr(request, "url", ""))
-        qs = parse_qs(urlparse(url_str).query)
-        query = (qs.get("query") or [""])[0]
-
+class Default(WorkerEntrypoint):
+    async def fetch(self, request):
         try:
-            k = int((qs.get("k") or ["5"])[0])
-        except ValueError:
-            k = 5
+            url_str = str(getattr(request, "url", ""))
+            qs = parse_qs(urlparse(url_str).query)
+            query = (qs.get("query") or [""])[0]
 
-        headers = {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        }
+            try:
+                k = int((qs.get("k") or ["5"])[0])
+            except ValueError:
+                k = 5
 
-        if not query:
-            body = json.dumps({
-                "status": "ok",
-                "message": "Football Stats Worker API online. Pass ?query=PlayerName to search."
-            })
-            return Response.new(body, status=200, headers=headers)
+            headers = {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            }
 
-        payload = similar(query, k=k)
-        status = 404 if "error" in payload else 200
-        return Response.new(json.dumps(payload, ensure_ascii=False), status=status, headers=headers)
+            if not query:
+                body = json.dumps({
+                    "status": "ok",
+                    "message": "Football Stats Worker API online. Pass ?query=PlayerName to search."
+                })
+                return Response(body, status=200, headers=headers)
 
-    except Exception as e:
-        import traceback
-        err_headers = {
-            "Content-Type": "text/plain",
-            "Access-Control-Allow-Origin": "*",
-        }
-        return Response.new(
-            f"Worker Error:\n{traceback.format_exc()}",
-            status=500,
-            headers=err_headers,
-        )
+            payload = similar(query, k=k)
+            status = 404 if "error" in payload else 200
+            return Response(json.dumps(payload, ensure_ascii=False), status=status, headers=headers)
+
+        except Exception:
+            import traceback
+            err_headers = {
+                "Content-Type": "text/plain",
+                "Access-Control-Allow-Origin": "*",
+            }
+            return Response(
+                f"Worker Error:\n{traceback.format_exc()}",
+                status=500,
+                headers=err_headers,
+            )
