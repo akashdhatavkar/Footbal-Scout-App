@@ -7,9 +7,8 @@ import unicodedata
 from urllib.parse import parse_qs, urlparse
 
 from js import Response
-from workers import WorkerEntrypoint
 
-# Embedded seed corpus directly inside index.py
+# Embedded seed corpus
 CORPUS = [
     {
         "player_id": "p1",
@@ -188,42 +187,41 @@ def similar(query: str, k: int = 5) -> dict:
     }
 
 
-class Default(WorkerEntrypoint):
-    async def fetch(self, request):
+async def on_fetch(request, env):
+    try:
+        url_str = str(getattr(request, "url", ""))
+        qs = parse_qs(urlparse(url_str).query)
+        query = (qs.get("query") or [""])[0]
+
         try:
-            url_str = str(getattr(request, "url", ""))
-            qs = parse_qs(urlparse(url_str).query)
-            query = (qs.get("query") or [""])[0]
+            k = int((qs.get("k") or ["5"])[0])
+        except ValueError:
+            k = 5
 
-            try:
-                k = int((qs.get("k") or ["5"])[0])
-            except ValueError:
-                k = 5
+        headers = {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        }
 
-            headers = {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            }
+        if not query:
+            body = json.dumps({
+                "status": "ok",
+                "message": "Football Stats Worker API online. Pass ?query=PlayerName to search."
+            })
+            return Response.new(body, status=200, headers=headers)
 
-            if not query:
-                body = json.dumps({
-                    "status": "ok",
-                    "message": "Football Stats Worker API online. Pass ?query=PlayerName to search."
-                })
-                return Response.new(body, status=200, headers=headers)
+        payload = similar(query, k=k)
+        status = 404 if "error" in payload else 200
+        return Response.new(json.dumps(payload, ensure_ascii=False), status=status, headers=headers)
 
-            payload = similar(query, k=k)
-            status = 404 if "error" in payload else 200
-            return Response.new(json.dumps(payload, ensure_ascii=False), status=status, headers=headers)
-
-        except Exception:
-            import traceback
-            err_headers = {
-                "Content-Type": "text/plain",
-                "Access-Control-Allow-Origin": "*",
-            }
-            return Response.new(
-                f"Worker Error:\n{traceback.format_exc()}",
-                status=500,
-                headers=err_headers,
-            )
+    except Exception:
+        import traceback
+        err_headers = {
+            "Content-Type": "text/plain",
+            "Access-Control-Allow-Origin": "*",
+        }
+        return Response.new(
+            f"Worker Error:\n{traceback.format_exc()}",
+            status=500,
+            headers=err_headers,
+        )
