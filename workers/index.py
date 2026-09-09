@@ -7,9 +7,9 @@ import unicodedata
 from urllib.parse import parse_qs, urlparse
 
 from js import Response
-from cloudflare.workers import WorkerEntrypoint
+from workers import WorkerEntrypoint
 
-# Embedded seed corpus directly inside index.py to avoid cross-module import failures
+# Embedded seed corpus directly inside index.py
 CORPUS = [
     {
         "player_id": "p1",
@@ -210,11 +210,11 @@ class Default(WorkerEntrypoint):
                     "status": "ok",
                     "message": "Football Stats Worker API online. Pass ?query=PlayerName to search."
                 })
-                return Response(body, status=200, headers=headers)
+                return Response.new(body, status=200, headers=headers)
 
             payload = similar(query, k=k)
             status = 404 if "error" in payload else 200
-            return Response(json.dumps(payload, ensure_ascii=False), status=status, headers=headers)
+            return Response.new(json.dumps(payload, ensure_ascii=False), status=status, headers=headers)
 
         except Exception:
             import traceback
@@ -222,7 +222,7 @@ class Default(WorkerEntrypoint):
                 "Content-Type": "text/plain",
                 "Access-Control-Allow-Origin": "*",
             }
-            return Response(
+            return Response.new(
                 f"Worker Error:\n{traceback.format_exc()}",
                 status=500,
                 headers=err_headers,
