@@ -1,9 +1,8 @@
 # Cloudflare Workers (Python) configuration.
 # Python Workers are in open beta and require the `python_workers` compatibility flag.
-name = "football-stats-api"
+name = "footbal-scout-app"
 main = "workers/index.py"
-
-compatibility_date = "2025-01-01"
+compatibility_date = "2024-09-02"
 compatibility_flags = ["python_workers"]
 
 # Include the corpus data module in the bundle (single source of truth).
